@@ -21,6 +21,7 @@ if os.path.exists(MODEL_PATH):
     model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
 
 model.to(device)
+model.float()
 model.eval()
 
 def predict(image: np.ndarray) -> np.ndarray:
