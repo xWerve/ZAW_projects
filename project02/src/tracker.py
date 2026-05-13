@@ -11,12 +11,11 @@ class Tracker:
         self.tracks = []
 
     def update(self, dets):
-        # dets: [x1, y1, x2, y2, conf]
         for t in self.tracks:
             t.predict()
 
         if len(dets) > 0:
-            trks = np.array([t.history[-1][0] for t in self.tracks])
+            trks = np.array([t.history[-1][0] for t in self.tracks]) if len(self.tracks) > 0 else np.empty((0, 4))
             matched, unmatched_dets, unmatched_trks = associate_detections_to_tracks(dets[:, :4], trks,
                                                                                      self.iou_threshold)
 
@@ -27,15 +26,16 @@ class Tracker:
                 self.tracks.append(Track(dets[i, :4], dets[i, 4]))
 
         ret = []
-        i = len(self.tracks)
-        for t in reversed(self.tracks):
+        for i in range(len(self.tracks) - 1, -1, -1):
+            t = self.tracks[i]
+
             if t.time_since_update < 1 and (t.hits >= self.min_hits or t.age <= self.min_hits):
-                b = t.history[-1][0]
-                ret.append(np.concatenate(([t.id + 1], b, [t.conf])).reshape(1, -1))
-            i -= 1
+                b = t.history[-1][0]  # [x1, y1, x2, y2]
+                ret.append(np.array([t.id + 1, b[0], b[1], b[2], b[3], t.conf]))
+
             if t.time_since_update > self.max_age:
                 self.tracks.pop(i)
 
         if len(ret) > 0:
-            return np.concatenate(ret)
+            return np.stack(ret)
         return np.empty((0, 6))

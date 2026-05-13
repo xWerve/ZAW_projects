@@ -1,3 +1,4 @@
+import numpy as np
 from .kalman_filter import KalmanBoxTracker
 
 class Track:
@@ -6,11 +7,12 @@ class Track:
         self.id = Track.count
         Track.count += 1
         self.kf = KalmanBoxTracker(bbox)
-        self.hits = 0
-        self.age = 0
+        self.hits = 1
+        self.age = 1
         self.time_since_update = 0
         self.conf = conf
-        self.history = []
+        # Inicjalizujemy historię pierwszą pozycją
+        self.history = [bbox.reshape(1, 4)]
 
     def predict(self):
         bbox = self.kf.predict()
@@ -24,3 +26,4 @@ class Track:
         self.hits += 1
         self.conf = conf
         self.kf.update(bbox)
+        self.history[-1] = bbox.reshape(1, 4)
