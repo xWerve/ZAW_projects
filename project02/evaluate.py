@@ -70,10 +70,15 @@ def evaluate_results(data_root, results_root):
             acc.update(g['id'].values, r['id'].values, dist_matrix)
 
     mh = mm.metrics.create()
-    summary = mh.compute(acc, metrics=['mota', 'motp', 'idsw', 'precision', 'recall'], name='Mój Tracker')
+
+    metrics_to_compute = ['mota', 'motp', 'num_switches', 'precision', 'recall']
+
+    summary = mh.compute(acc, metrics=metrics_to_compute, name='Mój Tracker')
 
     print("\n--- WYNIKI KOŃCOWE ---")
-    print(mm.io.render_summary(summary, formatters=mh.formatters, namemap=mm.io.motchallenge_metric_names))
+    print(mm.io.render_summary(summary,
+                               formatters=mh.formatters,
+                               namemap=mm.io.motchallenge_metric_names))
 
 
 if __name__ == "__main__":
