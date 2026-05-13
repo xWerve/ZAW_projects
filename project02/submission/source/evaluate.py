@@ -41,11 +41,29 @@ def calculate_iou_distance(bboxes1, bboxes2, threshold=0.5):
     return dist_matrix
 
 
+def load_gt(gt_path, classes_to_keep=(1,), min_visibility=0.0):
+    df = pd.read_csv(gt_path, header=None)
+    df.columns = ['frame', 'id', 'x', 'y', 'w', 'h', 'active', 'class', 'visibility'] + \
+                 [f'extra_{i}' for i in range(df.shape[1] - 9)] if df.shape[1] >= 9 else \
+                 ['frame', 'id', 'x', 'y', 'w', 'h'] + [f'extra_{i}' for i in range(df.shape[1] - 6)]
+
+    if 'active' in df.columns:
+        df = df[df['active'] == 1]
+
+    if 'class' in df.columns and classes_to_keep is not None:
+        df = df[df['class'].isin(classes_to_keep)]
+
+    if 'visibility' in df.columns and min_visibility > 0:
+        df = df[df['visibility'] >= min_visibility]
+
+    return df[['frame', 'id', 'x', 'y', 'w', 'h']].reset_index(drop=True)
+
+
 def evaluate_results(data_root, results_root):
     acc = mm.MOTAccumulator(auto_id=True)
     sequences = [d for d in os.listdir(data_root) if os.path.isdir(os.path.join(data_root, d))]
 
-    for seq in sequences:
+    for seq in sorted(sequences):
         gt_path = os.path.join(data_root, seq, 'gt', 'gt.txt')
         res_path = os.path.join(results_root, f'{seq}.txt')
 
@@ -54,8 +72,7 @@ def evaluate_results(data_root, results_root):
 
         print(f"Ewaluacja: {seq}...")
 
-        gt = pd.read_csv(gt_path, header=None).iloc[:, :6]
-        gt.columns = ['frame', 'id', 'x', 'y', 'w', 'h']
+        gt = load_gt(gt_path, classes_to_keep=(1,), min_visibility=0.1)
 
         res = pd.read_csv(res_path, header=None).iloc[:, :6]
         res.columns = ['frame', 'id', 'x', 'y', 'w', 'h']
@@ -70,9 +87,7 @@ def evaluate_results(data_root, results_root):
             acc.update(g['id'].values, r['id'].values, dist_matrix)
 
     mh = mm.metrics.create()
-
     metrics_to_compute = ['mota', 'motp', 'num_switches', 'precision', 'recall']
-
     summary = mh.compute(acc, metrics=metrics_to_compute, name='Mój Tracker')
 
     print("\n--- WYNIKI KOŃCOWE ---")
@@ -82,4 +97,6 @@ def evaluate_results(data_root, results_root):
 
 
 if __name__ == "__main__":
-    evaluate_results('data/evs_mot-train', 'results')
+    import sys
+    results_dir = sys.argv[1] if len(sys.argv) > 1 else 'results'
+    evaluate_results('data/evs_mot-train', results_dir)
